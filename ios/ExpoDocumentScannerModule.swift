@@ -1,44 +1,48 @@
 import ExpoModulesCore
+import VisionKit
+import Vision
 
-public class ExpoDocumentScannerModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoDocumentScanner')` in JavaScript.
-    Name("ExpoDocumentScanner")
-
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants([
-      "PI": Double.pi
-    ])
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
+public class ExpoDocumentScannerModule: Module, DocumentScannerModuleDelegate {
+    private var promise: Promise?
+    
+    public func onCancel(_ result: [String: Any]) {
+        promise?.resolve(result)
+        promise = nil
     }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onChange", [
-        "value": value
-      ])
+    
+    public func onError(_ error: any Error) {
+        promise?.reject(error)
+        promise = nil
     }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
-    View(ExpoDocumentScannerView.self) {
-      // Defines a setter for the `name` prop.
-      Prop("name") { (view: ExpoDocumentScannerView, prop: String) in
-        print(prop)
-      }
+    
+    public func onSuccess(_ result: [String: Any]) {
+        promise?.resolve(result)
+        promise = nil
     }
-  }
+    
+    let documentScannerImpl = DocumentScannerImpl()
+    let documentScannerPermissionsImpl = DocumentScannerPermissionsImpl()
+    
+    public func definition() -> ModuleDefinition {
+        Name("ExpoDocumentScanner")
+        
+        OnCreate {
+            documentScannerImpl.delegate = self
+        }
+        
+        Function("checkCameraPermissions") {
+            return documentScannerPermissionsImpl.checkCameraPermission()
+        }
+        
+        AsyncFunction("requestCameraPermissions") { (promise: Promise) in
+            documentScannerPermissionsImpl.checkAndRequestCameraPermission { granted in
+                promise.resolve(granted)
+            }
+        }
+        
+        AsyncFunction("scanDocument") { (promise: Promise) in
+            self.promise = promise
+            documentScannerImpl.scanDocument()
+        }.runOnQueue(.main)
+    }
 }

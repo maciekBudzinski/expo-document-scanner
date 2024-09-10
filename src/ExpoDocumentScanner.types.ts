@@ -1,7 +1,11 @@
-export type ChangeEventPayload = {
-  value: string;
-};
+export type CameraPermissionStatus =
+  | "UNKNOWN"
+  | "NOT_DETERMINED"
+  | "RESTRICTED"
+  | "DENIED"
+  | "AUTHORIZED";
 
-export type ExpoDocumentScannerViewProps = {
-  name: string;
+export type DocumentScannerResult = {
+  canceled: boolean;
+  images: string[];
 };

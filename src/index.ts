@@ -1,26 +1,30 @@
-import { NativeModulesProxy, EventEmitter, Subscription } from 'expo-modules-core';
+import { Platform } from "react-native";
 
-// Import the native module. On web, it will be resolved to ExpoDocumentScanner.web.ts
-// and on native platforms to ExpoDocumentScanner.ts
-import ExpoDocumentScannerModule from './ExpoDocumentScannerModule';
-import ExpoDocumentScannerView from './ExpoDocumentScannerView';
-import { ChangeEventPayload, ExpoDocumentScannerViewProps } from './ExpoDocumentScanner.types';
+import {
+  CameraPermissionStatus,
+  DocumentScannerResult,
+} from "./ExpoDocumentScanner.types";
+import ExpoDocumentScannerModule from "./ExpoDocumentScannerModule";
 
-// Get the native constant value.
-export const PI = ExpoDocumentScannerModule.PI;
-
-export function hello(): string {
-  return ExpoDocumentScannerModule.hello();
+export async function scanDocument(): Promise<DocumentScannerResult> {
+  return ExpoDocumentScannerModule.scanDocument();
 }
 
-export async function setValueAsync(value: string) {
-  return await ExpoDocumentScannerModule.setValueAsync(value);
+export function checkCameraPermissionsStatus(): CameraPermissionStatus {
+  if (Platform.OS === "android") {
+    return "AUTHORIZED";
+  }
+  return ExpoDocumentScannerModule.checkCameraPermissions();
 }
 
-const emitter = new EventEmitter(ExpoDocumentScannerModule ?? NativeModulesProxy.ExpoDocumentScanner);
+export async function requestPermissions(): Promise<boolean> {
+  if (Platform.OS === "android") {
+    return true;
+  }
 
-export function addChangeListener(listener: (event: ChangeEventPayload) => void): Subscription {
-  return emitter.addListener<ChangeEventPayload>('onChange', listener);
+  return await ExpoDocumentScannerModule.requestCameraPermissions();
 }
 
-export { ExpoDocumentScannerView, ExpoDocumentScannerViewProps, ChangeEventPayload };
+export const useDocumentScannerPermissions = () => {
+  return [checkCameraPermissionsStatus(), requestPermissions] as const;
+};
